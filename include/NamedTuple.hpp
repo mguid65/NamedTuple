@@ -29,6 +29,10 @@
  * @endcond
  */
 
+#ifndef MGUID_NAMEDTUPLE_H
+#define MGUID_NAMEDTUPLE_H
+
+#include "NamedTuple.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <string_view>
@@ -43,50 +47,46 @@ namespace mguid {
  */
 template <std::size_t NSize>
 struct StringLiteral {
-    /**
-     * @brief Construct a StringLiteral from a string literal
-     * @param str a string literal as a const reference to a sized char array
-     */
-    constexpr StringLiteral(char const (&str)[NSize]) {
-        std::copy_n(str, NSize, value);
-    }
+  /**
+   * @brief Construct a StringLiteral from a string literal
+   * @param str a string literal as a const reference to a sized char array
+   */
+  constexpr StringLiteral(char const (&str)[NSize]) { std::copy_n(str, NSize, value); }
 
-    /**
-     * @brief Equality compare against another StringLiteral
-     * Since this type is only templated on the size,
-     * we need the equality operator to determine sameness for lookup
-     * 
-     * @tparam MSize size of other string literal
-     * @param other StringLiteral to compare with
-     * @return true if equal; otherwise false
-     */
-    template <std::size_t MSize>
-    constexpr bool operator==(StringLiteral<MSize> other) const {
-        constexpr auto equal = [](const auto& lhs, const auto& rhs) {
-            for (std::size_t i{0}; i < NSize; i++) {
-                if (lhs.value[i] != rhs.value[i]) {
-                    return false;
-                }
-            }
-            return true;
-        };
-        return MSize == NSize && equal(*this, other);
-    }
+  /**
+   * @brief Equality compare against another StringLiteral
+   * Since this type is only templated on the size,
+   * we need the equality operator to determine sameness for lookup
+   *
+   * @tparam MSize size of other string literal
+   * @param other StringLiteral to compare with
+   * @return true if equal; otherwise false
+   */
+  template <std::size_t MSize>
+  constexpr bool operator==(StringLiteral<MSize> other) const {
+    constexpr auto equal = [](const auto& lhs, const auto& rhs) {
+      for (std::size_t i{0}; i < NSize; i++) {
+        if (lhs.value[i] != rhs.value[i]) { return false; }
+      }
+      return true;
+    };
+    return MSize == NSize && equal(*this, other);
+  }
 
-    /**
-     * @brief Equality compare against a string_view
-     *
-     * subtract one because the string_view doesn't account for the null-terminator
-     *
-     * @param sv string_view to compare with
-     * @return true if equal; otherwise false
-     */
-    constexpr bool operator==(std::string_view sv) const {
-        return sv == std::string_view{value, size - 1};
-    }
+  /**
+   * @brief Equality compare against a string_view
+   *
+   * subtract one because the string_view doesn't account for the null-terminator
+   *
+   * @param sv string_view to compare with
+   * @return true if equal; otherwise false
+   */
+  constexpr bool operator==(std::string_view sv) const {
+    return sv == std::string_view{value, size - 1};
+  }
 
-    char value[NSize];
-    static constexpr std::size_t size{NSize};
+  char value[NSize];
+  static constexpr std::size_t size{NSize};
 };
 
 /**
@@ -96,46 +96,45 @@ struct StringLiteral {
  */
 template <StringLiteral Tag, typename Type>
 struct NamedType {
-    /**
-     * @brief Equality compare against a StringLiteral
-     * we need the equality operator to determine sameness for lookup
-     * 
-     * Sameness in this case is only used to determine uniqueness where uniqueness is only determined by differing keys.
-     *
-     * @tparam MSize size of other string literal
-     * @param other StringLiteral to compare with
-     * @return true if equal; otherwise false
-     */
-    template <std::size_t MSize>
-    constexpr bool operator==(StringLiteral<MSize> other) const {
-        constexpr auto equal = [](const auto& lhs, const auto& rhs) {
-            for (std::size_t i{0}; i < Tag.size; i++) {
-                if (lhs.value[i] != rhs.value[i]) {
-                    return false;
-                }
-            }
-            return true;
-        };
-        return MSize == Tag.size && equal(Tag, other);
-    }
+  /**
+   * @brief Equality compare against a StringLiteral
+   * we need the equality operator to determine sameness for lookup
+   *
+   * Sameness in this case is only used to determine uniqueness where uniqueness is only determined
+   * by differing keys.
+   *
+   * @tparam MSize size of other string literal
+   * @param other StringLiteral to compare with
+   * @return true if equal; otherwise false
+   */
+  template <std::size_t MSize>
+  constexpr bool operator==(StringLiteral<MSize> other) const {
+    constexpr auto equal = [](const auto& lhs, const auto& rhs) {
+      for (std::size_t i{0}; i < Tag.size; i++) {
+        if (lhs.value[i] != rhs.value[i]) { return false; }
+      }
+      return true;
+    };
+    return MSize == Tag.size && equal(Tag, other);
+  }
 
-    /**
-     * @brief Equality compare this with another NamedType
-     * @tparam OtherTag Tag of other NamedType
-     * @tparam OtherType Type of other NamedType
-     * @return true if both have the same tag; otherwise false
-     */
-    template <StringLiteral OtherTag, typename OtherType>
-    constexpr bool operator==(NamedType<OtherTag, OtherType>) const {
-        return Tag == OtherTag;
-    }
+  /**
+   * @brief Equality compare this with another NamedType
+   * @tparam OtherTag Tag of other NamedType
+   * @tparam OtherType Type of other NamedType
+   * @return true if both have the same tag; otherwise false
+   */
+  template <StringLiteral OtherTag, typename OtherType>
+  constexpr bool operator==(NamedType<OtherTag, OtherType>) const {
+    return Tag == OtherTag;
+  }
 
-    /**
-     * @brief Equality compare this with a string_view
-     * @param sv string_view to compare with
-     * @return true if the string_view is equal to this instances Tag; otherwise false
-     */
-    constexpr bool operator==(std::string_view sv) const { return Tag == sv; }
+  /**
+   * @brief Equality compare this with a string_view
+   * @param sv string_view to compare with
+   * @return true if the string_view is equal to this instances Tag; otherwise false
+   */
+  constexpr bool operator==(std::string_view sv) const { return Tag == sv; }
 };
 
 /**
@@ -149,10 +148,10 @@ struct ExtractType;
  * @brief Partially specialized helper template
  * @tparam Key key part of NamedType
  * @tparam Type type part of NamedType
- */ 
+ */
 template <StringLiteral Key, typename Type>
 struct ExtractType<NamedType<Key, Type>> {
-    using type = Type;
+  using type = Type;
 };
 
 /**
@@ -166,16 +165,14 @@ struct ExtractType<NamedType<Key, Type>> {
  */
 template <NamedType Type, NamedType... NamedTypes>
 constexpr std::size_t key_index() {
-    std::size_t index{0};
-    ([&index]() {
-        if (Type == NamedTypes) {
-            return false;
-        }
-        ++index;
-        return true;
-    }() &&
-     ...);
-    return index;
+  std::size_t index{0};
+  ([&index]() {
+    if (Type == NamedTypes) { return false; }
+    ++index;
+    return true;
+  }() &&
+   ...);
+  return index;
 }
 
 /**
@@ -189,36 +186,36 @@ constexpr std::size_t key_index() {
  */
 template <StringLiteral Key, NamedType... NamedTypes>
 constexpr std::size_t key_index() {
-    std::size_t index{0};
-    ([&index]() {
-        if (Key == NamedTypes) {
-            return false;
-        }
-        ++index;
-        return true;
-    }() &&
-     ...);
-    return index;
+  std::size_t index{0};
+  ([&index]() {
+    if (Key == NamedTypes) { return false; }
+    ++index;
+    return true;
+  }() &&
+   ...);
+  return index;
 }
 
 /**
  * @brief Determine if all NamedTypes within the pack are unique
- * @tparam NamedTypes pack of NamedType non-types 
+ * @tparam NamedTypes pack of NamedType non-types
  * @return true if all values in the pack are unique; otherwise false
  */
 template <NamedType... NamedTypes>
 constexpr bool all_unique() {
+  if constexpr (sizeof...(NamedTypes) == 0) {
+    return true;
+  } else {
     bool seen[sizeof...(NamedTypes)] = {0};
 
     ([&seen]() { seen[key_index<NamedTypes, NamedTypes...>()] = true; }(), ...);
 
     for (std::size_t i{0}; i < sizeof...(NamedTypes); i++) {
-        if (!seen[i]) {
-            return false;
-        }
+      if (!seen[i]) { return false; }
     }
 
     return true;
+  }
 }
 
 /**
@@ -229,65 +226,142 @@ constexpr bool all_unique() {
  */
 template <StringLiteral Key, NamedType... NamedTypes>
 constexpr bool is_one_of() {
-    return (... || (Key == NamedTypes));
+  return (... || (Key == NamedTypes));
 }
 
 /**
  * @brief A tuple whose elements can be looked up by name(string literal) along with type and index
- * @tparam NamedTypes pack of NamedType types with unique names 
+ * @tparam NamedTypes pack of NamedType types with unique names
  */
 template <typename... NamedTypes>
-    requires(all_unique<NamedTypes{}...>())
+  requires(all_unique<NamedTypes{}...>())
 struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
-    using Base = std::tuple<typename ExtractType<NamedTypes>::type...>;
+  using Base = std::tuple<typename ExtractType<NamedTypes>::type...>;
 
-    /**
-     * @brief Extracts the element of the tuple whose name is Tag
-     * @tparam Tag a StringLiteral to search for
-     * @return the element of the tuple whose name is Tag
-     */
-    template <StringLiteral Tag>
-        requires(is_one_of<Tag, NamedTypes{}...>())
-    [[nodiscard]] constexpr auto& get() & noexcept {
-        return std::get<key_index<Tag, NamedTypes{}...>()>(
-            static_cast<Base&>(*this));
-    }
+  /**
+   * @brief Construct this NamedTuple initializing all elements
+   * @tparam InitTypes types of initializer values
+   * @param init_values values to initialize each tuple element
+   */
+  template <typename... InitTypes>
+  explicit(false) NamedTuple(InitTypes&&... init_values)
+    : Base{std::forward<InitTypes>(init_values)...} {}
 
-    /**
-     * @brief Extracts the element of the tuple whose name is Tag
-     * @tparam Tag a StringLiteral to search for
-     * @return the element of the tuple whose name is Tag
-     */
-    template <StringLiteral Tag>
-        requires(is_one_of<Tag, NamedTypes{}...>())
-    [[nodiscard]] constexpr const auto& get() const& noexcept {
-        return std::get<key_index<Tag, NamedTypes...>()>(
-            static_cast<Base&>(*this));
-    }
+  /**
+   * @brief Get the number of elements this NamedTuple holds
+   * @return the number of elements this NamedTuple holds
+   */
+  [[nodiscard]] constexpr std::size_t size() const { return std::tuple_size_v<decltype(*this)>; }
 
-    /**
-     * @brief Extracts the element of the tuple whose name is Tag
-     * @tparam Tag a StringLiteral to search for
-     * @return the element of the tuple whose name is Tag
-     */
-    template <StringLiteral Tag>
-        requires(is_one_of<Tag, NamedTypes{}...>())
-    [[nodiscard]] constexpr auto&& get() && noexcept {
-        return std::get<key_index<Tag, NamedTypes{}...>()>(
-            static_cast<Base&>(*this));
-    }
+  /**
+   * @brief Explicit conversion operator to Base
+   * @return Const reference to Base
+   */
+  [[nodiscard]] constexpr explicit operator const Base&() const { return static_cast<const Base&>(*this); }
 
-    /**
-     * @brief Extracts the element of the tuple whose name is Tag
-     * @tparam Tag a StringLiteral to search for
-     * @return the element of the tuple whose name is Tag
-     */
-    template <StringLiteral Tag>
-        requires(is_one_of<Tag, NamedTypes{}...>())
-    [[nodiscard]] constexpr const auto&& get() const&& noexcept {
-        return std::get<key_index<Tag, NamedTypes...>()>(
-            static_cast<Base&>(*this));
-    }
+  /**
+   * @brief Explicit conversion operator to Base
+   * @return Reference to Base
+   */
+  [[nodiscard]] constexpr explicit operator Base&() { return static_cast<Base&>(*this); }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose name is Tag
+   * @tparam Tag a StringLiteral to search for
+   * @return the element of the NamedTuple whose name is Tag
+   */
+  template <StringLiteral Tag>
+    requires(is_one_of<Tag, NamedTypes{}...>())
+  [[nodiscard]] constexpr auto& get() & noexcept {
+    return std::get<key_index<Tag, NamedTypes{}...>()>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose name is Tag
+   * @tparam Tag a StringLiteral to search for
+   * @return the element of the NamedTuple whose name is Tag
+   */
+  template <StringLiteral Tag>
+    requires(is_one_of<Tag, NamedTypes{}...>())
+  [[nodiscard]] constexpr const auto& get() const& noexcept {
+    return std::get<key_index<Tag, NamedTypes...>()>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose name is Tag
+   * @tparam Tag a StringLiteral to search for
+   * @return the element of the NamedTuple whose name is Tag
+   */
+  template <StringLiteral Tag>
+    requires(is_one_of<Tag, NamedTypes{}...>())
+  [[nodiscard]] constexpr auto&& get() && noexcept {
+    return std::get<key_index<Tag, NamedTypes{}...>()>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose name is Tag
+   * @tparam Tag a StringLiteral to search for
+   * @return the element of the NamedTuple whose name is Tag
+   */
+  template <StringLiteral Tag>
+    requires(is_one_of<Tag, NamedTypes{}...>())
+  [[nodiscard]] constexpr const auto&& get() const&& noexcept {
+    return std::get<key_index<Tag, NamedTypes...>()>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Element-wise comparison of the elements in this NamedTuple with elements in the other NamedTuple
+   *
+   * Note: The key is not a part of the value of this type,
+   * however it does make the equality behave differently.
+   *
+   * Do we want to compare as if we were calling get<KeyLhs>() == get<KeyRhs>()
+   * or as if we are calling get<IndexLhs>() == get<IndexRhs>()? This matters because looking up by
+   * key makes it so the order doesnt matter.
+   *
+   * @tparam OtherNamedTypes pack of types in other NamedTuple
+   * @param other another NamedTuple to compare against
+   * @return Returns true if all pairs of corresponding elements are equal; otherwise false
+   */
+  template <typename... OtherNamedTypes>
+  [[nodiscard]] constexpr bool operator==(const NamedTuple<OtherNamedTypes...>& other) const {
+    return static_cast<Base&>(*this) == static_cast<decltype(other)::Base&>(other);
+  }
+
+  /**
+   * @brief Element-wise comparison of the elements in this NamedTuple with elements in a std::tuple
+   *
+   * Note: The key is not a part of the value of this type
+   *
+   * @tparam OtherTypes pack of types in the std::tuple
+   * @param other a std::tuple to compare against
+   * @return Returns true if all pairs of corresponding elements are equal; otherwise false
+   */
+  template <typename... OtherTypes>
+  [[nodiscard]] constexpr bool operator==(const std::tuple<OtherTypes...>& other) const {
+    return static_cast<Base&>(*this) == static_cast<decltype(other)::Base&>(other);
+  }
 };
 
-} // namespace mguid
+}  // namespace mguid
+
+/**
+ * @brief Specialization of std::tuple_size for NamedTuple
+ * @tparam NamedTypes type list for a NamedTuple
+ */
+template <typename... NamedTypes>
+struct std::tuple_size<mguid::NamedTuple<NamedTypes...>>
+    : std::integral_constant<std::size_t, sizeof...(NamedTypes)> {};
+
+/**
+ * @brief Specialization of std::tuple_element for NamedTuple
+ * @tparam Index index of tuple element in tuple
+ * @tparam NamedTypes type list for a NamedTuple
+ */
+template<std::size_t Index, typename... NamedTypes>
+    struct std::tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
+  static_assert(Index < sizeof...(NamedTypes), "Index out of range");
+  using type = std::tuple_element_t<Index, typename mguid::NamedTuple<NamedTypes...>::Base>;
+};
+
+#endif // MGUID_NAMEDTUPLE_H
