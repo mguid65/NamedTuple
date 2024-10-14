@@ -207,7 +207,7 @@ constexpr bool all_unique() {
   } else {
     bool seen[sizeof...(NamedTypes)] = {0};
 
-    ([&seen]() { seen[key_index<NamedTypes, NamedTypes...>()] = true; }(), ...);
+    ([&seen]() { seen[key_index<NamedTypes, NamedTypes>()] = true; }(), ...);
 
     for (std::size_t i{0}; i < sizeof...(NamedTypes); i++) {
       if (!seen[i]) { return false; }
