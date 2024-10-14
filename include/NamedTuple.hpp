@@ -32,7 +32,6 @@
 #ifndef MGUID_NAMEDTUPLE_H
 #define MGUID_NAMEDTUPLE_H
 
-#include "NamedTuple.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <string_view>
