@@ -207,7 +207,7 @@ constexpr bool all_unique() {
   } else {
     bool seen[sizeof...(NamedTypes)] = {0};
 
-    ([&seen]() { seen[key_index<NamedTypes, NamedTypes>()] = true; }(), ...);
+    ([&seen]() { seen[key_index<NamedTypes, NamedTypes...>()] = true; }(), ...);
 
     for (std::size_t i{0}; i < sizeof...(NamedTypes); i++) {
       if (!seen[i]) { return false; }
@@ -244,19 +244,21 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    */
   template <typename... InitTypes>
   explicit(false) NamedTuple(InitTypes&&... init_values)
-    : Base{std::forward<InitTypes>(init_values)...} {}
+      : Base{std::forward<InitTypes>(init_values)...} {}
 
   /**
    * @brief Get the number of elements this NamedTuple holds
    * @return the number of elements this NamedTuple holds
    */
-  [[nodiscard]] constexpr std::size_t size() const { return std::tuple_size_v<decltype(*this)>; }
+  [[nodiscard]] constexpr std::size_t size() const { return sizeof...(NamedTypes); }
 
   /**
    * @brief Explicit conversion operator to Base
    * @return Const reference to Base
    */
-  [[nodiscard]] constexpr explicit operator const Base&() const { return static_cast<const Base&>(*this); }
+  [[nodiscard]] constexpr explicit operator const Base&() const {
+    return static_cast<const Base&>(*this);
+  }
 
   /**
    * @brief Explicit conversion operator to Base
@@ -265,12 +267,30 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
   [[nodiscard]] constexpr explicit operator Base&() { return static_cast<Base&>(*this); }
 
   /**
+   * @brief Set the element of the NamedTuple with the name Tag to value
+   * @tparam Tag StringLiteral element name
+   * @tparam Value type of value, convertible to the type of the element associated with Tag
+   * @param value value to set
+   */
+  template <StringLiteral Tag, typename Value>
+    requires(
+        sizeof...(NamedTypes) > 0 &&
+        is_one_of<Tag, NamedTypes{}...>() &&
+        std::is_convertible_v<Value, std::tuple_element_t<key_index<Tag, NamedTypes{}...>(), Base>>)
+  constexpr void set(Value&& value) {
+    std::get<key_index<Tag, NamedTypes{}...>()>(static_cast<Base&>(*this)) =
+        std::forward<Value>(value);
+  }
+
+  /**
    * @brief Extracts the element of the NamedTuple whose name is Tag
    * @tparam Tag a StringLiteral to search for
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(is_one_of<Tag, NamedTypes{}...>())
+    requires(
+        sizeof...(NamedTypes) > 0 &&
+        is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr auto& get() & noexcept {
     return std::get<key_index<Tag, NamedTypes{}...>()>(static_cast<Base&>(*this));
   }
@@ -281,7 +301,9 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(is_one_of<Tag, NamedTypes{}...>())
+    requires(
+        sizeof...(NamedTypes) > 0 &&
+        is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto& get() const& noexcept {
     return std::get<key_index<Tag, NamedTypes...>()>(static_cast<Base&>(*this));
   }
@@ -292,7 +314,9 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(is_one_of<Tag, NamedTypes{}...>())
+    requires(
+        sizeof...(NamedTypes) > 0 &&
+        is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr auto&& get() && noexcept {
     return std::get<key_index<Tag, NamedTypes{}...>()>(static_cast<Base&>(*this));
   }
@@ -303,13 +327,16 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(is_one_of<Tag, NamedTypes{}...>())
+    requires(
+        sizeof...(NamedTypes) > 0 &&
+        is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto&& get() const&& noexcept {
     return std::get<key_index<Tag, NamedTypes...>()>(static_cast<Base&>(*this));
   }
 
   /**
-   * @brief Element-wise comparison of the elements in this NamedTuple with elements in the other NamedTuple
+   * @brief Element-wise comparison of the elements in this NamedTuple with elements in the other
+   * NamedTuple
    *
    * Note: The key is not a part of the value of this type,
    * however it does make the equality behave differently.
@@ -357,10 +384,10 @@ struct std::tuple_size<mguid::NamedTuple<NamedTypes...>>
  * @tparam Index index of tuple element in tuple
  * @tparam NamedTypes type list for a NamedTuple
  */
-template<std::size_t Index, typename... NamedTypes>
-    struct std::tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
+template <std::size_t Index, typename... NamedTypes>
+struct std::tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
   static_assert(Index < sizeof...(NamedTypes), "Index out of range");
   using type = std::tuple_element_t<Index, typename mguid::NamedTuple<NamedTypes...>::Base>;
 };
 
-#endif // MGUID_NAMEDTUPLE_H
+#endif  // MGUID_NAMEDTUPLE_H
