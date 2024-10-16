@@ -99,3 +99,11 @@ TEST_CASE("NamedTuple Setter") {
     REQUIRE(nt.get<"key">() == 42);
   }
 }
+
+TEST_CASE("Comparison") {
+  SECTION("Empty Equal") {
+    mguid::NamedTuple<> nt1;
+    mguid::NamedTuple<> nt2;
+    REQUIRE(nt1 == nt2);
+  }
+}
