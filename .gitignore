@@ -1,0 +1,7 @@
+.idea
+cmake-build-*
+build*
+
+conan_provider.cmake
+
+CMakeUserPresets.json
