@@ -50,7 +50,9 @@ struct StringLiteral {
    * @brief Construct a StringLiteral from a string literal
    * @param str a string literal as a const reference to a sized char array
    */
-  constexpr StringLiteral(char const (&str)[NSize]) { std::copy_n(str, NSize, value); }
+  constexpr explicit(false) StringLiteral(char const (&str)[NSize]) : value{'\0'} {
+    std::copy_n(str, NSize, value);
+  }
 
   /**
    * @brief Equality compare against another StringLiteral
@@ -62,7 +64,7 @@ struct StringLiteral {
    * @return true if equal; otherwise false
    */
   template <std::size_t MSize>
-  constexpr bool operator==(StringLiteral<MSize> other) const {
+  [[nodiscard]] constexpr bool operator==(StringLiteral<MSize> other) const {
     constexpr auto equal = [](const auto& lhs, const auto& rhs) {
       for (std::size_t i{0}; i < NSize; i++) {
         if (lhs.value[i] != rhs.value[i]) { return false; }
@@ -80,7 +82,7 @@ struct StringLiteral {
    * @param sv string_view to compare with
    * @return true if equal; otherwise false
    */
-  constexpr bool operator==(std::string_view sv) const {
+  [[nodiscard]] constexpr bool operator==(const std::string_view sv) const {
     return sv == std::string_view{value, size - 1};
   }
 
@@ -90,10 +92,11 @@ struct StringLiteral {
 
 /**
  * @brief A helper type to associate a StringLiteral tag with a type for use with NamedTuple
- * @param Tag the "name" associated with the type
- * @param Type the type to forward to the tuple base in NamedTuple
+ * @tparam Tag the "name" associated with the type
+ * @tparam Unused the type to forward to the tuple base in NamedTuple; This type is extracted but not
+ * used directly in this helper class
  */
-template <StringLiteral Tag, typename Type>
+template <StringLiteral Tag, typename Unused>
 struct NamedType {
   /**
    * @brief Equality compare against a StringLiteral
@@ -158,18 +161,19 @@ struct ExtractType<NamedType<Key, Type>> {
  *
  * NOTE: This assumes that the NamedType we are looking for exists within the pack
  *
- * @tparam Type NamedType to search for
- * @tparam NamedTypes pack of NamedType non-types
+ * @tparam Needle NamedType to search for
+ * @tparam Haystack pack of NamedType non-types
  * @return the index equivalent of the location of the type within the pack
  */
-template <NamedType Type, NamedType... NamedTypes>
+template <NamedType Needle, NamedType... Haystack>
 constexpr std::size_t key_index() {
   std::size_t index{0};
-  ([&index]() {
-    if (Type == NamedTypes) { return false; }
+  ([&index]<NamedType Type>() {
+    if (Needle == Type) { return false; }
     ++index;
     return true;
-  }() && ...);
+  }.template operator()<Haystack>() &&
+   ...);
   return index;
 }
 
@@ -178,18 +182,19 @@ constexpr std::size_t key_index() {
  *
  * NOTE: This assumes that the NamedType with the tag Key exists within the pack
  *
- * @tparam Key StringLiteral tag to search for
- * @tparam NamedTypes pack of NamedType non-types
+ * @tparam Needle StringLiteral tag to search for
+ * @tparam Haystack pack of NamedType non-types
  * @return the index equivalent of the location of the type with the tag within the pack
  */
-template <StringLiteral Key, NamedType... NamedTypes>
+template <StringLiteral Needle, NamedType... Haystack>
 constexpr std::size_t key_index() {
   std::size_t index{0};
-  ([&index]() {
-    if (Key == NamedTypes) { return false; }
+  ([&index]<NamedType Type>() {
+    if (Needle == Type) { return false; }
     ++index;
     return true;
-  }() && ...);
+  }.template operator()<Haystack>() &&
+   ...);
   return index;
 }
 
@@ -203,9 +208,13 @@ constexpr bool all_unique() {
   if constexpr (sizeof...(NamedTypes) == 0) {
     return true;
   } else {
-    bool seen[sizeof...(NamedTypes)] = {0};
+    bool seen[sizeof...(NamedTypes)] = {false};
 
-    ([&seen]() { seen[key_index<NamedTypes, NamedTypes...>()] = true; }(), ...);
+    (
+        [&seen]<NamedType Type>() {
+          seen[key_index<Type, NamedTypes...>()] = true;
+        }.template operator()<NamedTypes>(),
+        ...);
 
     for (std::size_t i{0}; i < sizeof...(NamedTypes); i++) {
       if (!seen[i]) { return false; }
@@ -273,13 +282,11 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    */
   template <StringLiteral Tag, typename Value>
     requires(
-        sizeof...(NamedTypes) > 0 &&
-        is_one_of<Tag, NamedTypes{}...>() &&
+        sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>() &&
         std::is_convertible_v<Value, std::tuple_element_t<key_index<Tag, NamedTypes{}...>(), Base>>)
   constexpr void set(Value&& value) {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
-    std::get<Index>(static_cast<Base&>(*this)) =
-        std::forward<Value>(value);
+    std::get<Index>(static_cast<Base&>(*this)) = std::forward<Value>(value);
   }
 
   /**
@@ -288,9 +295,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(
-        sizeof...(NamedTypes) > 0 &&
-        is_one_of<Tag, NamedTypes{}...>())
+    requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr auto& get() & noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
     return std::get<Index>(static_cast<Base&>(*this));
@@ -302,9 +307,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(
-        sizeof...(NamedTypes) > 0 &&
-        is_one_of<Tag, NamedTypes{}...>())
+    requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto& get() const& noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
     return std::get<Index>(static_cast<Base&>(*this));
@@ -316,9 +319,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(
-        sizeof...(NamedTypes) > 0 &&
-        is_one_of<Tag, NamedTypes{}...>())
+    requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr auto&& get() && noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
     return std::get<Index>(static_cast<Base&>(*this));
@@ -330,9 +331,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @return the element of the NamedTuple whose name is Tag
    */
   template <StringLiteral Tag>
-    requires(
-        sizeof...(NamedTypes) > 0 &&
-        is_one_of<Tag, NamedTypes{}...>())
+    requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto&& get() const&& noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
     return std::get<Index>(static_cast<Base&>(*this));
@@ -392,7 +391,8 @@ struct std::tuple_size<mguid::NamedTuple<NamedTypes...>>
 template <std::size_t Index, typename... NamedTypes>
 struct std::tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
   static_assert(Index < sizeof...(NamedTypes), "Index out of range");
-  using type = std::tuple_element_t<Index, typename mguid::NamedTuple<NamedTypes...>::Base>;
+  using Base = typename mguid::NamedTuple<NamedTypes...>::Base;
+  using type = std::tuple_element_t<Index, Base>;
 };
 
 #endif  // MGUID_NAMEDTUPLE_H
