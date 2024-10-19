@@ -104,10 +104,66 @@ TEST_CASE("NamedTuple Setter") {
 }
 
 TEST_CASE("Comparison") {
-  SECTION("Empty Equal") {
+  SECTION("Empty Equality") {
     mguid::NamedTuple<> nt1;
     mguid::NamedTuple<> nt2;
     REQUIRE(nt1 == nt2);
+  }
+  SECTION("Single Type Equality") {
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt1{1};
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt2{1};
+    REQUIRE(nt1 == nt2);
+  }
+  SECTION("Multi Type Equality Same Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{1, 2, 3};
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt2{1, 2, 3};
+
+    REQUIRE(nt1 == nt2);
+  }
+  SECTION("Multi Type Equality Different Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{1, 2, 3};
+    mguid::NamedTuple<mguid::NamedType<"key3", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key1", int>> nt2{3, 2, 1};
+
+    REQUIRE(nt1 == nt2);
+  }
+
+  SECTION("Single Element Less Than") {
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt1{1};
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt2{2};
+    REQUIRE(nt1 < nt2);
+  }
+  SECTION("Single Element Greater Than") {
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt1{2};
+    mguid::NamedTuple<mguid::NamedType<"key", int>> nt2{1};
+    REQUIRE(nt1 > nt2);
+  }
+
+  SECTION("Multi Type Less Than Same Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{1, 1, 1};
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt2{2, 2, 2};
+
+    REQUIRE(nt1 < nt2);
+  }
+
+  SECTION("Multi Type Less Than Different Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{1, 1, 1};
+    mguid::NamedTuple<mguid::NamedType<"key3", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key1", int>> nt2{2, 2, 2};
+
+    REQUIRE(nt1 < nt2);
+  }
+
+  SECTION("Multi Type Greater Than Same Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{2, 2, 2};
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt2{1, 1, 1};
+
+    REQUIRE(nt1 > nt2);
+  }
+
+  SECTION("Multi Type Greater Than Different Order") {
+    mguid::NamedTuple<mguid::NamedType<"key1", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key3", int>> nt1{2, 2, 2};
+    mguid::NamedTuple<mguid::NamedType<"key3", int>, mguid::NamedType<"key2", int>, mguid::NamedType<"key1", int>> nt2{1, 1, 1};
+
+    REQUIRE(nt1 > nt2);
   }
 }
 

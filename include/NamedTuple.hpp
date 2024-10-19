@@ -93,8 +93,8 @@ struct StringLiteral {
 /**
  * @brief A helper type to associate a StringLiteral tag with a type for use with NamedTuple
  * @tparam Tag the "name" associated with the type
- * @tparam Unused the type to forward to the tuple base in NamedTuple; This type is extracted but not
- * used directly in this helper class
+ * @tparam Unused the type to forward to the tuple base in NamedTuple; This type is extracted but
+ * not used directly in this helper class
  */
 template <StringLiteral Tag, typename Unused>
 struct NamedType {
@@ -137,6 +137,12 @@ struct NamedType {
    * @return true if the string_view is equal to this instances Tag; otherwise false
    */
   constexpr bool operator==(std::string_view sv) const { return Tag == sv; }
+
+  /**
+   * @brief Get the tag passed to this NamedType
+   * @return the tag passed to this NamedType
+   */
+  constexpr StringLiteral<Tag.size> tag() const { return Tag; }
 };
 
 /**
@@ -225,6 +231,27 @@ constexpr bool all_unique() {
 }
 
 /**
+ * @brief Recreation of the exposition only function synth-three-way
+ */
+constexpr auto SynthThreeWay = []<class T, class U>(const T& t, const U& u)
+  requires requires {
+    { t < u } -> std::convertible_to<bool>;
+    { u < t } -> std::convertible_to<bool>;
+  }
+{
+  if constexpr (std::three_way_comparable_with<T, U>) {
+    return t <=> u;
+  } else {
+    if (t < u) return std::weak_ordering::less;
+    if (u < t) return std::weak_ordering::greater;
+    return std::weak_ordering::equivalent;
+  }
+};
+
+template <class T, class U = T>
+using SynthThreeWayResultT = decltype(SynthThreeWay(std::declval<T&>(), std::declval<U&>()));
+
+/**
  * @brief Check if Key is one of the tags of a NamedType within the NamedTypes pack
  * @tparam Key key to search for
  * @tparam NamedTypes pack of NamedType to search in
@@ -251,7 +278,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @param init_values values to initialize each tuple element
    */
   template <typename... InitTypes>
-  explicit(false) NamedTuple(InitTypes&&... init_values)
+  constexpr explicit(false) NamedTuple(InitTypes&&... init_values)
       : Base{std::forward<InitTypes>(init_values)...} {}
 
   /**
@@ -310,7 +337,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
     requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto& get() const& noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
-    return std::get<Index>(static_cast<Base&>(*this));
+    return std::get<Index>(static_cast<const Base&>(*this));
   }
 
   /**
@@ -334,7 +361,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
     requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
   [[nodiscard]] constexpr const auto&& get() const&& noexcept {
     constexpr std::size_t Index = key_index<Tag, NamedTypes{}...>();
-    return std::get<Index>(static_cast<Base&>(*this));
+    return std::get<Index>(static_cast<const Base&>(*this));
   }
 
   /**
@@ -354,8 +381,8 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    */
   template <typename... OtherNamedTypes>
   [[nodiscard]] constexpr bool operator==(const NamedTuple<OtherNamedTypes...>& other) const {
-    using OtherBase = typename NamedTuple<OtherNamedTypes...>::Base;
-    return static_cast<const Base&>(*this) == static_cast<const OtherBase&>(other);
+    static_assert(sizeof...(NamedTypes) == sizeof...(OtherNamedTypes));
+    return ((this->get<NamedTypes{}.tag()>() == other.template get<NamedTypes{}.tag()>()) && ...);
   }
 
   /**
@@ -370,6 +397,42 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
   template <typename... OtherTypes>
   [[nodiscard]] constexpr bool operator==(const std::tuple<OtherTypes...>& other) const {
     return static_cast<const Base&>(*this) == other;
+  }
+
+  /**
+   * @brief Spaceship compare against a std::tuple
+   * @tparam OtherTypes pack of types in the std::tuple
+   * @param other a std::tuple to compare against
+   * @return
+   */
+  template <typename... OtherTypes>
+  [[nodiscard]] constexpr auto operator<=>(const std::tuple<OtherTypes...>& other) const {
+    return static_cast<const Base&>(*this) <=> other;
+  }
+
+  /**
+   * @brief Spaceship compare against a std::tuple
+   * @tparam OtherTypes pack of types in the std::tuple
+   * @param other a std::tuple to compare against
+   * @return
+   */
+  template <typename... OtherNamedTypes>
+  [[nodiscard]] constexpr auto operator<=>(const NamedTuple<OtherNamedTypes...>& other) const {
+    static_assert(sizeof...(NamedTypes) == sizeof...(OtherNamedTypes));
+    if constexpr (sizeof...(NamedTypes) == 0 && sizeof...(OtherNamedTypes) == 0) {
+      return std::strong_ordering::equal;
+    }
+
+    std::common_comparison_category_t<SynthThreeWayResultT<
+        typename ExtractType<NamedTypes>::type,
+        typename ExtractType<OtherNamedTypes>::type>...> result = std::strong_ordering::equivalent;
+
+    ([this, &other, &result]<StringLiteral Tag>() {
+      result = SynthThreeWay(this->get<Tag>(), other.template get<Tag>());
+      return result != 0;
+    }.template operator()<NamedTypes{}.tag()>() || ...);
+
+    return result;
   }
 };
 
