@@ -5,3 +5,5 @@ build*
 conan_provider.cmake
 
 CMakeUserPresets.json
+
+__pycache__

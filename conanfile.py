@@ -6,7 +6,7 @@ from conan.tools.files import copy
 from conan.tools.build import can_run
 
 class NamedTupleConan(ConanFile):
-    name = 'NamedTuple'
+    name = 'named_tuple'
     version = '0.0.1'
 
     license = 'MIT'

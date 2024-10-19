@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(named_tuple::named_tuple REQUIRED CONFIG)
+find_package(named_tuple REQUIRED CONFIG)
 
 add_executable(example src/example.cpp)
 target_link_libraries(example PRIVATE named_tuple::named_tuple)
