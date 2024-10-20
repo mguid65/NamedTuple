@@ -78,3 +78,20 @@ In order to get the behavior of `std::tuple`, first cast both sides to their res
 When comparing a `NamedTuple` with a `std::tuple` the std::tuple equality will be used.
 
 All of these considerations are also true for `<=>`.
+
+## A Note on the Implementation
+
+In theory, this same approach should work with any tuple implementation that is similar to `std::tuple`.
+
+A similar approach can be used to make something like a `NamedArray` which is something like a constexpr associative 
+array and a `NamedBitset`.
+
+For something like a `NamedBitset/Array` you may want a way to omit the name for a range of bits and continue naming 
+later (Possibly for something like reserved elements).
+I've considered some ways to implement this but haven't tested them.
+
+You would want something like:
+
+```c++
+NamedBitset<"name1", "name2", "name3", Skip<10>, "nameN"> nb;
+```
