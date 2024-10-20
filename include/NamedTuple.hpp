@@ -145,12 +145,24 @@ struct NamedType {
   constexpr StringLiteral<Tag.size> tag() const { return Tag; }
 };
 
+/**
+ * @brief A type that associates a NamedType with a value
+ * @tparam Tag StringLiteral element name
+ * @tparam ValueType type of value this will hold
+ */
 template <StringLiteral Tag, typename ValueType>
 struct NamedTypeValueHelper {
   using DecayT = NamedType<Tag, std::unwrap_ref_decay_t<ValueType>>;
   ValueType value{};
 };
 
+/**
+ * @brief A helper to associate a value with a named type for use in make_tuple
+ * @tparam Tag StringLiteral element name
+ * @tparam ValueType type of value
+ * @param value value to associate with NamedType
+ * @return a NamedTypeValueHelper object with the given value and Tag
+ */
 template <StringLiteral Tag, typename ValueType>
 constexpr NamedTypeValueHelper<Tag, ValueType> NamedTypeV(ValueType value) {
   return NamedTypeValueHelper<Tag, ValueType>(value);
@@ -243,6 +255,10 @@ constexpr bool all_unique() {
 
 /**
  * @brief Recreation of the exposition only function synth-three-way
+ * @tparam T Lhs type
+ * @tparam U Rhs type
+ * @param t lhs
+ * @param u rhs
  */
 constexpr auto SynthThreeWay = []<class T, class U>(const T& t, const U& u)
   requires requires {
@@ -259,6 +275,11 @@ constexpr auto SynthThreeWay = []<class T, class U>(const T& t, const U& u)
   }
 };
 
+/**
+ * @brief Helper type to get the result type of SynthThreeWay
+ * @tparam T Lhs type
+ * @tparam U Rhs type
+ */
 template <class T, class U = T>
 using SynthThreeWayResultT = decltype(SynthThreeWay(std::declval<T&>(), std::declval<U&>()));
 
@@ -414,7 +435,8 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @brief Spaceship compare against a std::tuple
    * @tparam OtherTypes pack of types in the std::tuple
    * @param other a std::tuple to compare against
-   * @return
+   * @return The relation between the first pair of non-equivalent elements if there is any,
+   * std::strong_ordering::equal otherwise. For two empty tuples, returns std::strong_ordering::equal.
    */
   template <typename... OtherTypes>
   [[nodiscard]] constexpr auto operator<=>(const std::tuple<OtherTypes...>& other) const {
@@ -425,7 +447,8 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @brief Spaceship compare against a std::tuple
    * @tparam OtherTypes pack of types in the std::tuple
    * @param other a std::tuple to compare against
-   * @return
+   * @returnThe relation between the first pair of non-equivalent elements if there is any,
+   * std::strong_ordering::equal otherwise. For two empty tuples, returns std::strong_ordering::equal.
    */
   template <typename... OtherNamedTypes>
   [[nodiscard]] constexpr auto operator<=>(const NamedTuple<OtherNamedTypes...>& other) const {
@@ -448,6 +471,12 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
   }
 };
 
+/**
+ * @brief Creates a NamedTuple object, deducing the target type from the types of arguments.
+ * @tparam NamedTypeVs pack of zero or more named type value helpers
+ * @param args zero or more arguments to construct the tuple from
+ * @return A NamedTuple object containing the given values
+ */
 template <typename... NamedTypeVs>
 constexpr auto make_tuple(NamedTypeVs&&... args) {
   return std::invoke(
