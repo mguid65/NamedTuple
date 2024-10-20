@@ -16,19 +16,46 @@ cmake --build --preset conan-release
 ```c++
 #include "NamedTuple.hpp"
 
+#include <cassert>
+
 int main() {
+    mguid::NamedTuple<mguid::NamedType<"first", int>, 
+                      mguid::NamedType<"second", int>> nt0;
     mguid::NamedTuple<mguid::NamedType<"first", int>, 
                       mguid::NamedType<"second", int>> nt1{0, 0};
     
+    // Accessors
     const auto& first = nt1.get<"first">();
-    const auto& second = nt1.get<"second">();
+    nt1.get<"second">() = 42;
     
+    // Mutators
     nt1.set<"first">(42);
     
+    // Comparison
     mguid::NamedTuple<mguid::NamedType<"first", int>, 
                       mguid::NamedType<"second", int>> nt2{13, 37};
+    
     mguid::NamedTuple<mguid::NamedType<"first", int>, 
-                      mguid::NamedType<"second", int>> nt2{13, 37};
+                      mguid::NamedType<"second", int>> nt3{13, 37};
+    
+    mguid::NamedTuple<mguid::NamedType<"first", int>, 
+                      mguid::NamedType<"second", int>> nt4{13, 38};
+    
+    mguid::NamedTuple<mguid::NamedType<"second", int>,
+                      mguid::NamedType<"first", int>> nt5{37, 13};
+    
+    assert(nt2 == nt3);
+    assert(nt4 > nt3);
+    assert(nt5 == nt3);
+    
+    // mguid::make_tuple
+    int i = 5;
+    std::reference_wrapper<int> i_ref{i};
+    // also maintains the reference_wrapper decay behavior of std::make_tuple 
+    // so the type of the first tuple element is `int&`
+    auto nt6 = mguid::make_tuple(mguid::NamedTypeV<"int_key">(i_ref),
+                                 mguid::NamedTypeV<"float_key">(1.0f),
+                                 mguid::NamedTypeV<"char_key">('c'));
 }
 ```
 
