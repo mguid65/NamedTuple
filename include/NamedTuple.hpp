@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
@@ -93,8 +94,7 @@ struct StringLiteral {
 /**
  * @brief A helper type to associate a StringLiteral tag with a type for use with NamedTuple
  * @tparam Tag the "name" associated with the type
- * @tparam Unused the type to forward to the tuple base in NamedTuple; This type is extracted but
- * not used directly in this helper class
+ * @tparam Unused the type to forward to the tuple base in NamedTuple
  */
 template <StringLiteral Tag, typename Unused>
 struct NamedType {
@@ -127,7 +127,7 @@ struct NamedType {
    * @return true if both have the same tag; otherwise false
    */
   template <StringLiteral OtherTag, typename OtherType>
-  constexpr bool operator==(NamedType<OtherTag, OtherType>) const {
+  constexpr bool operator==(const NamedType<OtherTag, OtherType>&) const {
     return Tag == OtherTag;
   }
 
@@ -144,6 +144,17 @@ struct NamedType {
    */
   constexpr StringLiteral<Tag.size> tag() const { return Tag; }
 };
+
+template <StringLiteral Tag, typename ValueType>
+struct NamedTypeValueHelper {
+  using DecayT = NamedType<Tag, std::unwrap_ref_decay_t<ValueType>>;
+  ValueType value{};
+};
+
+template <StringLiteral Tag, typename ValueType>
+constexpr NamedTypeValueHelper<Tag, ValueType> NamedTypeV(ValueType value) {
+  return NamedTypeValueHelper<Tag, ValueType>(value);
+}
 
 /**
  * @brief Base template of helper template to extract the type from a NamedType
@@ -424,17 +435,27 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
     }
 
     std::common_comparison_category_t<SynthThreeWayResultT<
-        typename ExtractType<NamedTypes>::type,
-        typename ExtractType<OtherNamedTypes>::type>...> result = std::strong_ordering::equivalent;
+        typename ExtractType<NamedTypes>::type, typename ExtractType<OtherNamedTypes>::type>...>
+        result = std::strong_ordering::equivalent;
 
     ([this, &other, &result]<StringLiteral Tag>() {
       result = SynthThreeWay(this->get<Tag>(), other.template get<Tag>());
       return result != 0;
-    }.template operator()<NamedTypes{}.tag()>() || ...);
+    }.template operator()<NamedTypes{}.tag()>() ||
+     ...);
 
     return result;
   }
 };
+
+template <typename... NamedTypeVs>
+constexpr auto make_tuple(NamedTypeVs&&... args) {
+  return std::invoke(
+      []<typename... Types>(Types&&... inner_args) {
+        return NamedTuple<typename NamedTypeVs::DecayT...>{std::forward<Types>(inner_args)...};
+      },
+      std::forward<NamedTypeVs>(args).value...);
+}
 
 }  // namespace mguid
 
