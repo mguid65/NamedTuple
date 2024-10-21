@@ -20,4 +20,17 @@ int main() {
   std::cout << nt.get<"int_key">() << '\n';
   std::cout << nt.get<"float_key">() << '\n';
   std::cout << nt.get<"char_key">() << '\n';
+
+  std::cout << mguid::get<"int_key">(nt) << '\n';
+  std::cout << mguid::get<"float_key">(nt) << '\n';
+  std::cout << mguid::get<"char_key">(nt) << '\n';
+
+  std::cout << std::get<0>(nt) << '\n';
+  std::cout << std::get<1>(nt) << '\n';
+  std::cout << std::get<2>(nt) << '\n';
+
+  auto& [int_key, float_key, char_key] = nt;
+  std::cout << int_key << '\n';
+  std::cout << float_key << '\n';
+  std::cout << char_key << '\n';
 }

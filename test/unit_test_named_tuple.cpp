@@ -32,24 +32,7 @@ TEST_CASE("NamedTuple Constructor") {
         mguid::NamedType<"key5", int>, mguid::NamedType<"key6", char>,
         mguid::NamedType<"key7", int>, mguid::NamedType<"key8", char>>
         nt{1, 'a', 3, 'b', 5, 'c', 7, 'd'};
-
-    REQUIRE(std::get<0>(nt) == 1);
-    REQUIRE(std::get<1>(nt) == 'a');
-    REQUIRE(std::get<2>(nt) == 3);
-    REQUIRE(std::get<3>(nt) == 'b');
-    REQUIRE(std::get<4>(nt) == 5);
-    REQUIRE(std::get<5>(nt) == 'c');
-    REQUIRE(std::get<6>(nt) == 7);
-    REQUIRE(std::get<7>(nt) == 'd');
-
-    REQUIRE(nt.get<"key1">() == 1);
-    REQUIRE(nt.get<"key2">() == 'a');
-    REQUIRE(nt.get<"key3">() == 3);
-    REQUIRE(nt.get<"key4">() == 'b');
-    REQUIRE(nt.get<"key5">() == 5);
-    REQUIRE(nt.get<"key6">() == 'c');
-    REQUIRE(nt.get<"key7">() == 7);
-    REQUIRE(nt.get<"key8">() == 'd');
+    SUCCEED();
   }
   SECTION("Nested") {
     [[maybe_unused]] mguid::NamedTuple<mguid::NamedType<
@@ -100,6 +83,52 @@ TEST_CASE("NamedTuple Setter") {
     REQUIRE(nt.get<"key">() == 2);
     nt.set<"key">(42);
     REQUIRE(nt.get<"key">() == 42);
+  }
+}
+
+TEST_CASE("NamedTuple Getter") {
+  [[maybe_unused]] mguid::NamedTuple<
+      mguid::NamedType<"key1", int>, mguid::NamedType<"key2", char>,
+      mguid::NamedType<"key3", int>, mguid::NamedType<"key4", char>>
+      nt{1, 'a', 3, 'b'};
+
+  [[maybe_unused]] const mguid::NamedTuple<
+      mguid::NamedType<"key1", int>, mguid::NamedType<"key2", char>,
+      mguid::NamedType<"key3", int>, mguid::NamedType<"key4", char>>
+      const_nt{1, 'a', 3, 'b'};
+
+  SECTION("Std Get") {
+    REQUIRE(std::get<0>(nt) == 1);
+    REQUIRE(std::get<1>(nt) == 'a');
+    REQUIRE(std::get<2>(nt) == 3);
+    REQUIRE(std::get<3>(nt) == 'b');
+
+    REQUIRE(std::get<0>(const_nt) == 1);
+    REQUIRE(std::get<1>(const_nt) == 'a');
+    REQUIRE(std::get<2>(const_nt) == 3);
+    REQUIRE(std::get<3>(const_nt) == 'b');
+  }
+  SECTION("Mguid Get") {
+    REQUIRE(mguid::get<"key1">(nt) == 1);
+    REQUIRE(mguid::get<"key2">(nt) == 'a');
+    REQUIRE(mguid::get<"key3">(nt) == 3);
+    REQUIRE(mguid::get<"key4">(nt) == 'b');
+
+    REQUIRE(mguid::get<"key1">(const_nt) == 1);
+    REQUIRE(mguid::get<"key2">(const_nt) == 'a');
+    REQUIRE(mguid::get<"key3">(const_nt) == 3);
+    REQUIRE(mguid::get<"key4">(const_nt) == 'b');
+  }
+  SECTION("Member Get") {
+    REQUIRE(nt.get<"key1">() == 1);
+    REQUIRE(nt.get<"key2">() == 'a');
+    REQUIRE(nt.get<"key3">() == 3);
+    REQUIRE(nt.get<"key4">() == 'b');
+
+    REQUIRE(const_nt.get<"key1">() == 1);
+    REQUIRE(const_nt.get<"key2">() == 'a');
+    REQUIRE(const_nt.get<"key3">() == 3);
+    REQUIRE(const_nt.get<"key4">() == 'b');
   }
 }
 

@@ -47,6 +47,7 @@ namespace mguid {
  */
 template <std::size_t NSize>
 struct StringLiteral {
+  // NOLINTBEGIN(google-explicit-constructor)
   /**
    * @brief Construct a StringLiteral from a string literal
    * @param str a string literal as a const reference to a sized char array
@@ -54,6 +55,7 @@ struct StringLiteral {
   constexpr explicit(false) StringLiteral(char const (&str)[NSize]) : value{'\0'} {
     std::copy_n(str, NSize, value);
   }
+  // NOLINTEND(google-explicit-constructor)
 
   /**
    * @brief Equality compare against another StringLiteral
@@ -310,7 +312,7 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @param init_values values to initialize each tuple element
    */
   template <typename... InitTypes>
-  constexpr explicit(false) NamedTuple(InitTypes&&... init_values)
+  constexpr explicit NamedTuple(InitTypes&&... init_values)
       : Base{std::forward<InitTypes>(init_values)...} {}
 
   /**
@@ -397,6 +399,50 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
   }
 
   /**
+   * @brief Extracts the element of the NamedTuple whose index is Index
+   * @tparam Index index of the element to get
+   * @return the element of the NamedTuple whose index is Index
+   */
+  template <std::size_t Index>
+    requires(sizeof...(NamedTypes) > 0 && Index < sizeof...(NamedTypes))
+  [[nodiscard]] constexpr auto& get() & noexcept {
+    return std::get<Index>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose index is Index
+   * @tparam Index index of the element to get
+   * @return the element of the NamedTuple whose index is Index
+   */
+  template <std::size_t Index>
+    requires(sizeof...(NamedTypes) > 0 && Index < sizeof...(NamedTypes))
+  [[nodiscard]] constexpr const auto& get() const& noexcept {
+    return std::get<Index>(static_cast<const Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose index is Index
+   * @tparam Index index of the element to get
+   * @return the element of the NamedTuple whose index is Index
+   */
+  template <std::size_t Index>
+    requires(sizeof...(NamedTypes) > 0 && Index < sizeof...(NamedTypes))
+  [[nodiscard]] constexpr auto&& get() && noexcept {
+    return std::get<Index>(static_cast<Base&>(*this));
+  }
+
+  /**
+   * @brief Extracts the element of the NamedTuple whose index is Index
+   * @tparam Index index of the element to get
+   * @return the element of the NamedTuple whose index is Index
+   */
+  template <std::size_t Index>
+    requires(sizeof...(NamedTypes) > 0 && Index < sizeof...(NamedTypes))
+  [[nodiscard]] constexpr const auto&& get() const&& noexcept {
+    return std::get<Index>(static_cast<const Base&>(*this));
+  }
+
+  /**
    * @brief Element-wise comparison of the elements in this NamedTuple with elements in the other
    * NamedTuple
    *
@@ -436,7 +482,8 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @tparam OtherTypes pack of types in the std::tuple
    * @param other a std::tuple to compare against
    * @return The relation between the first pair of non-equivalent elements if there is any,
-   * std::strong_ordering::equal otherwise. For two empty tuples, returns std::strong_ordering::equal.
+   * std::strong_ordering::equal otherwise. For two empty tuples, returns
+   * std::strong_ordering::equal.
    */
   template <typename... OtherTypes>
   [[nodiscard]] constexpr auto operator<=>(const std::tuple<OtherTypes...>& other) const {
@@ -448,7 +495,8 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
    * @tparam OtherTypes pack of types in the std::tuple
    * @param other a std::tuple to compare against
    * @returnThe relation between the first pair of non-equivalent elements if there is any,
-   * std::strong_ordering::equal otherwise. For two empty tuples, returns std::strong_ordering::equal.
+   * std::strong_ordering::equal otherwise. For two empty tuples, returns
+   * std::strong_ordering::equal.
    */
   template <typename... OtherNamedTypes>
   [[nodiscard]] constexpr auto operator<=>(const NamedTuple<OtherNamedTypes...>& other) const {
@@ -470,30 +518,16 @@ struct NamedTuple : std::tuple<typename ExtractType<NamedTypes>::type...> {
     return result;
   }
 };
-
-/**
- * @brief Creates a NamedTuple object, deducing the target type from the types of arguments.
- * @tparam NamedTypeVs pack of zero or more named type value helpers
- * @param args zero or more arguments to construct the tuple from
- * @return A NamedTuple object containing the given values
- */
-template <typename... NamedTypeVs>
-constexpr auto make_tuple(NamedTypeVs&&... args) {
-  return std::invoke(
-      []<typename... Types>(Types&&... inner_args) {
-        return NamedTuple<typename NamedTypeVs::DecayT...>{std::forward<Types>(inner_args)...};
-      },
-      std::forward<NamedTypeVs>(args).value...);
-}
-
 }  // namespace mguid
 
+// NOLINTBEGIN(cert-dcl58-cpp)
+namespace std {
 /**
  * @brief Specialization of std::tuple_size for NamedTuple
  * @tparam NamedTypes type list for a NamedTuple
  */
 template <typename... NamedTypes>
-struct std::tuple_size<mguid::NamedTuple<NamedTypes...>>
+struct tuple_size<mguid::NamedTuple<NamedTypes...>>
     : std::integral_constant<std::size_t, sizeof...(NamedTypes)> {};
 
 /**
@@ -502,10 +536,93 @@ struct std::tuple_size<mguid::NamedTuple<NamedTypes...>>
  * @tparam NamedTypes type list for a NamedTuple
  */
 template <std::size_t Index, typename... NamedTypes>
-struct std::tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
+struct tuple_element<Index, mguid::NamedTuple<NamedTypes...>> {
   static_assert(Index < sizeof...(NamedTypes), "Index out of range");
   using Base = typename mguid::NamedTuple<NamedTypes...>::Base;
   using type = std::tuple_element_t<Index, Base>;
 };
+}  // namespace std
+// NOLINTEND(cert-dcl58-cpp)
+
+namespace mguid {
+/**
+ * @brief Creates a NamedTuple object, deducing the target type from the types of arguments.
+ * @tparam NamedTypeVs pack of zero or more named type value helpers
+ * @param args zero or more arguments to construct the tuple from
+ * @return A NamedTuple object containing the given values
+ */
+template <typename... NamedTypeVs>
+[[nodiscard]] constexpr auto make_tuple(NamedTypeVs&&... args) {
+  return std::invoke(
+      []<typename... Types>(Types&&... inner_args) {
+        return NamedTuple<typename NamedTypeVs::DecayT...>{std::forward<Types>(inner_args)...};
+      },
+      std::forward<NamedTypeVs>(args).value...);
+}
+
+/**
+ * @brief Extracts the element from the NamedTuple with the key Tag. Tag must be one of the tags
+ * associated with a type in NamedTypes.
+ * @tparam Tag the tag for the element to find
+ * @tparam NamedTypes pack of NamedType in the NamedTuple
+ * @param nt NamedTuple whose element to extract
+ * @return A reference to the selected element of nt
+ */
+template <StringLiteral Tag, typename... NamedTypes>
+  requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
+[[nodiscard]] constexpr
+    typename std::tuple_element<key_index<Tag, NamedTypes{}...>(), NamedTuple<NamedTypes...>>::type&
+    get(NamedTuple<NamedTypes...>& nt) noexcept {
+  return nt.template get<Tag>();
+}
+
+/**
+ * @brief Extracts the element from the NamedTuple with the key Tag. Tag must be one of the tags
+ * associated with a type in NamedTypes.
+ * @tparam Tag the tag for the element to find
+ * @tparam NamedTypes pack of NamedType in the NamedTuple
+ * @param nt NamedTuple whose element to extract
+ * @return A reference to the selected element of nt
+ */
+template <StringLiteral Tag, typename... NamedTypes>
+  requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
+[[nodiscard]] constexpr typename std::tuple_element<key_index<Tag, NamedTypes{}...>(),
+                                                    NamedTuple<NamedTypes...>>::type&&
+get(NamedTuple<NamedTypes...>&& nt) noexcept {
+  return nt.template get<Tag>();
+}
+
+/**
+ * @brief Extracts the element from the NamedTuple with the key Tag. Tag must be one of the tags
+ * associated with a type in NamedTypes.
+ * @tparam Tag the tag for the element to find
+ * @tparam NamedTypes pack of NamedType in the NamedTuple
+ * @param nt NamedTuple whose element to extract
+ * @return A reference to the selected element of nt
+ */
+template <StringLiteral Tag, typename... NamedTypes>
+  requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
+[[nodiscard]] constexpr const typename std::tuple_element<key_index<Tag, NamedTypes{}...>(),
+                                                          NamedTuple<NamedTypes...>>::type&
+get(const NamedTuple<NamedTypes...>& nt) noexcept {
+  return nt.template get<Tag>();
+}
+
+/**
+ * @brief Extracts the element from the NamedTuple with the key Tag. Tag must be one of the tags
+ * associated with a type in NamedTypes.
+ * @tparam Tag the tag for the element to find
+ * @tparam NamedTypes pack of NamedType in the NamedTuple
+ * @param nt NamedTuple whose element to extract
+ * @return A reference to the selected element of nt
+ */
+template <StringLiteral Tag, typename... NamedTypes>
+  requires(sizeof...(NamedTypes) > 0 && is_one_of<Tag, NamedTypes{}...>())
+[[nodiscard]] constexpr const typename std::tuple_element<key_index<Tag, NamedTypes{}...>(),
+                                                          NamedTuple<NamedTypes...>>::type&&
+get(const NamedTuple<NamedTypes...>&& nt) noexcept {
+  return nt.template get<Tag>();
+}
+}  // namespace mguid
 
 #endif  // MGUID_NAMEDTUPLE_H
